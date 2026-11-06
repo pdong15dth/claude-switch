@@ -9,6 +9,7 @@ No runtime dependencies beyond Python 3 (bundled with macOS) and macOS `security
 ## Install
 
 ```bash
+git clone https://github.com/pdong15dth/claude-switch.git ~/Documents/GitHub/claude-switch
 cd ~/Documents/GitHub/claude-switch
 ./scripts/install.sh
 ```
@@ -170,3 +171,7 @@ Not affiliated with Anthropic. "Claude" is a product of Anthropic.
 python3 -m unittest discover -s tests -v
 ./scripts/build-menubar.sh
 ```
+
+## License
+
+[MIT](LICENSE)

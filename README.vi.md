@@ -9,6 +9,7 @@ Không có dependency runtime ngoài Python 3 (có sẵn trên macOS) và `secur
 ## Cài đặt
 
 ```bash
+git clone https://github.com/pdong15dth/claude-switch.git ~/Documents/GitHub/claude-switch
 cd ~/Documents/GitHub/claude-switch
 ./scripts/install.sh
 ```
@@ -170,3 +171,7 @@ Không liên kết với Anthropic. "Claude" là sản phẩm của Anthropic.
 python3 -m unittest discover -s tests -v
 ./scripts/build-menubar.sh
 ```
+
+## Giấy phép
+
+[MIT](LICENSE)
