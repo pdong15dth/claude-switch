@@ -1,33 +1,35 @@
 # Claude Switch
 
-Chuyển qua lại giữa nhiều account subscription của **Claude Code** và **Claude Desktop** mà vẫn giữ nguyên settings, plugin, MCP, session history.
+**English** | [Tiếng Việt](README.vi.md)
 
-Không có dependency runtime ngoài Python 3 (có sẵn trên macOS) và `security` của macOS.
+Switch between multiple subscription accounts for **Claude Code** and **Claude Desktop** while keeping your settings, plugins, MCP servers, and session history intact.
 
-## Cài đặt
+No runtime dependencies beyond Python 3 (bundled with macOS) and macOS `security`.
+
+## Install
 
 ```bash
 cd ~/Documents/GitHub/claude-switch
 ./scripts/install.sh
 ```
 
-Lệnh này:
-- symlink CLI vào `~/.local/bin/claude-switch`
-- build menu bar app `menubar/ClaudeSwitchBar.app`
+This will:
+- symlink the CLI to `~/.local/bin/claude-switch`
+- build the menu bar app at `menubar/ClaudeSwitchBar.app`
 
-Nếu `~/.local/bin` chưa có trong `PATH`, thêm vào `~/.zshrc`:
+If `~/.local/bin` is not in your `PATH`, add it to `~/.zshrc`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Chạy menu bar:
+Run the menu bar app:
 
 ```bash
 claude-switch menubar
 ```
 
-Tự chạy khi đăng nhập macOS (tuỳ chọn):
+Start automatically at macOS login (optional):
 
 ```bash
 ./scripts/autostart.sh install
@@ -37,16 +39,16 @@ Tự chạy khi đăng nhập macOS (tuỳ chọn):
 
 ## Claude Code
 
-Claude Code lưu login subscription ở **Keychain** (`Claude Code-credentials`) và metadata account trong `~/.claude.json`. Mọi settings/plugin/MCP/skill/session nằm ở `~/.claude` và không bị đụng tới.
+Claude Code stores its subscription login in the **Keychain** (`Claude Code-credentials`) and account metadata in `~/.claude.json`. All settings/plugins/MCP/skills/sessions live in `~/.claude` and are never touched.
 
 ```bash
-# thêm account mới: tool tự lưu login hiện tại, mở browser login, rồi lưu account mới
+# add a new account: saves the current login, opens browser login, then saves the new account
 claude-switch cc login work
 
-# hoặc chỉ lưu login đang đăng nhập sẵn
+# or just save the login you are already signed in with
 claude-switch cc add work
 
-# chuyển qua lại
+# switch back and forth
 claude-switch cc use work
 claude-switch cc use personal
 
@@ -55,114 +57,114 @@ claude-switch cc current
 claude-switch cc remove personal
 ```
 
-Lưu ý:
-- Phải đóng các session Claude Code CLI trước khi `use` (hoặc `--force`). Session đang chạy có thể ghi đè token khi refresh.
-- Token hết hạn thì Claude Code tự refresh bằng refresh token; nếu refresh token cũng hết hạn, chạy `claude /login` cho account đó rồi `claude-switch cc add <label> --force`.
-- Khi switch, tool tự checkpoint login đang dùng trước, nên token vừa refresh không bị mất.
+Notes:
+- Close all Claude Code CLI sessions before running `use` (or pass `--force`). A running session can overwrite the token when it refreshes.
+- When a token expires, Claude Code refreshes it automatically using the refresh token. If the refresh token has also expired, run `claude /login` for that account and then `claude-switch cc add <label> --force`.
+- On every switch, the tool checkpoints the login currently in use first, so a freshly refreshed token is not lost.
 
 ## Claude Desktop
 
-Claude Desktop là Electron app; login nằm trong Cookies/Local Storage/IndexedDB chứ không tách riêng như Claude Code. Tool chỉ swap **các entry auth**, không swap toàn bộ app-data:
+Claude Desktop is an Electron app; its login lives in Cookies/Local Storage/IndexedDB rather than being isolated like Claude Code. The tool only swaps the **auth entries**, not the entire app-data tree:
 
-**Được swap theo account (Claude session)**
+**Swapped per account (Claude session)**
 `Cookies*`, `Local Storage`, `Session Storage`, `IndexedDB`, `WebStorage`, `SharedStorage`, `Trust Tokens*`, `InterestGroups`, `DIPS*`, `Network Persistent State`.
 
-**Dùng chung giữa các account (không swap)**
-`Partitions/` — đây là dữ liệu browser/webview bên trong Claude Desktop (`Launch Preview`, `cowork-shared`, preview). Cookie/login của Google, Slack, Backlog/nulab, Figma… nằm ở đây và **được giữ nguyên** khi đổi Claude account.
+**Shared between accounts (not swapped)**
+`Partitions/` — this is the browser/webview data inside Claude Desktop (`Launch Preview`, `cowork-shared`, preview). Cookies/logins for Google, Slack, Backlog/nulab, Figma, etc. live here and are **kept intact** when you switch Claude accounts.
 
-**Được giữ nguyên (settings)**
-`config.json` (theme, locale, … chỉ patch `lastKnownAccountUuid`), `claude_desktop_config.json` (MCP servers), `Preferences`, extensions, `claude-code-sessions`, cowork state, `git-worktrees.json`, window state, cache.
+**Kept as-is (settings)**
+`config.json` (theme, locale, … only `lastKnownAccountUuid` is patched), `claude_desktop_config.json` (MCP servers), `Preferences`, extensions, `claude-code-sessions`, cowork state, `git-worktrees.json`, window state, cache.
 
 ```bash
-# đang đăng nhập account 1, Claude Desktop đang mở
+# signed in as account 1, Claude Desktop is open
 claude-switch desktop add personal
-# tool tự: lưu session account 1 -> clear login -> mở app để bạn login account 2
-# -> chờ login xong -> quit -> lưu profile "personal" -> mở lại app
+# the tool will: save account 1's session -> clear login -> open the app for you to log in as account 2
+# -> wait for login to finish -> quit -> save profile "personal" -> reopen the app
 
-# chuyển qua lại
-claude-switch desktop use work         # quit -> checkpoint session hiện tại -> swap -> mở lại
+# switch back and forth
+claude-switch desktop use work         # quit -> checkpoint current session -> swap -> reopen
 claude-switch desktop list
 claude-switch desktop current
 claude-switch desktop remove personal
 
-# hoặc chỉ snapshot session đang đăng nhập sẵn
+# or just snapshot the session you are already signed in with
 claude-switch desktop save work
 
-# một lần: khôi phục browser data từ profile tạo bởi bản cũ (có Partitions)
+# one-time: restore browser data from a profile created by an older version (with Partitions)
 claude-switch desktop import-browser HCM
 ```
 
-Mỗi lần `desktop use`, tool **checkpoint ngược session Claude đang chạy vào profile của account đó trước khi swap**. Nhờ vậy cookie/refresh session của claude.ai phát sinh sau lần save cuối vẫn được giữ.
+On every `desktop use`, the tool **checkpoints the currently running Claude session back into that account's profile before swapping**. This preserves claude.ai cookies/refresh sessions created since the last save.
 
-**Đừng logout bằng tay trong app.** Logout sẽ invalidate session phía server và snapshot thành vô dụng. Dùng `desktop add` hoặc `desktop clear` — chỉ dời auth state ra khỏi app-data, session cũ vẫn còn trong backup.
+**Do not log out manually inside the app.** Logging out invalidates the session server-side and makes the snapshot useless. Use `desktop add` or `desktop clear` instead — they only move auth state out of app-data, and the old session remains in the backup.
 
-Lưu ý: state UI nào Claude Desktop lưu trong `localStorage`/`IndexedDB` top-level sẽ đi theo account. Settings dạng file như MCP servers, extensions, theme thì được giữ nguyên.
+Note: any UI state Claude Desktop stores in top-level `localStorage`/`IndexedDB` follows the account. File-based settings such as MCP servers, extensions, and theme are kept intact.
 
-### Browser/webview bên trong Claude Desktop
+### Browser/webview inside Claude Desktop
 
-- Login claude.ai của cửa sổ chính nằm ở top-level (`Cookies`, `Local Storage`, `IndexedDB`, …) và được swap theo profile.
-- Browser/webview bên trong (`Partitions/launch-preview-*`, `cowork-shared`, …) **dùng chung**: đổi Claude account không làm mất login Google, Slack, Backlog/nulab, Figma, Zalo… Dữ liệu này chỉ bị thay đổi khi bạn chủ động chạy `desktop import-browser`.
-- Cache (`Cache`, `Code Cache`, `GPUCache`, `blob_storage`, Service Worker cache, …) **không** được copy. Không mất login, nhưng dữ liệu offline tạm có thể mất.
-- Nếu "browser" bạn nói là **Claude in Chrome / Chrome extension** chạy trong Chrome thật, tool không đụng tới profile Chrome — login ở đó do Chrome quản lý.
+- The claude.ai login for the main window lives at the top level (`Cookies`, `Local Storage`, `IndexedDB`, …) and is swapped per profile.
+- Embedded browser/webviews (`Partitions/launch-preview-*`, `cowork-shared`, …) are **shared**: switching Claude accounts does not lose your Google, Slack, Backlog/nulab, Figma, or Zalo logins. That data only changes when you explicitly run `desktop import-browser`.
+- Caches (`Cache`, `Code Cache`, `GPUCache`, `blob_storage`, Service Worker cache, …) are **not** copied. Logins are unaffected, but temporary offline data may be lost.
+- If by "browser" you mean **Claude in Chrome / the Chrome extension** running in real Chrome, the tool does not touch your Chrome profile — logins there are managed by Chrome.
 
 ## Sync sessions (local)
 
-Claude Code CLI dùng chung `~/.claude/projects`, nên session/transcript đã có sẵn ở mọi account. Riêng **Code tab của Claude Desktop** lưu metadata theo `claude-code-sessions/<accountUuid>/<orgUuid>/`, nên đổi account là danh sách session biến mất. Tool sync metadata này across các account, thuần local, không qua mạng.
+The Claude Code CLI shares `~/.claude/projects`, so sessions/transcripts are already available to every account. However, the **Code tab in Claude Desktop** stores metadata under `claude-code-sessions/<accountUuid>/<orgUuid>/`, so switching accounts makes the session list disappear. The tool syncs this metadata across accounts, entirely locally, with no network access.
 
 ```bash
-claude-switch sessions status           # số session từng account
-claude-switch sessions sync --dry-run   # xem trước
-claude-switch sessions sync             # quit Claude Desktop -> sync -> mở lại
-claude-switch sessions sync --no-quit   # sync best-effort khi app đang chạy
+claude-switch sessions status           # session count per account
+claude-switch sessions sync --dry-run   # preview
+claude-switch sessions sync             # quit Claude Desktop -> sync -> reopen
+claude-switch sessions sync --no-quit   # best-effort sync while the app is running
 ```
 
-Quy tắc sync:
-- Mỗi `local_<id>.json` được lấy bản mới nhất (theo `lastActivityAt`/mtime) và copy sang mọi account/org dir còn thiếu hoặc cũ hơn.
-- Transcript thật vẫn nằm ở `~/.claude/projects/<project>/<cliSessionId>.jsonl` — đã dùng chung, không copy.
-- Tôn trọng tombstone `deleted_<id>`: session đã xoá ở account nào thì không tự thêm lại vào account đó.
-- Không xoá session nào; file bị ghi đè được backup vào `~/.claude-switch/sessions/backups/`.
-- Sync áp dụng cho tất cả account/org dir (kể cả org phụ của cùng account). Không rewrite các field account-specific như `envScopeId` hay MCP tool IDs.
+Sync rules:
+- For each `local_<id>.json`, the newest version (by `lastActivityAt`/mtime) is copied to every account/org dir where it is missing or older.
+- The actual transcript stays at `~/.claude/projects/<project>/<cliSessionId>.jsonl` — it is already shared and is not copied.
+- `deleted_<id>` tombstones are respected: a session deleted in one account is not re-added there automatically.
+- No session is ever deleted; overwritten files are backed up to `~/.claude-switch/sessions/backups/`.
+- Sync applies to all account/org dirs (including secondary orgs of the same account). Account-specific fields such as `envScopeId` or MCP tool IDs are not rewritten.
 
-Sau khi sync, restart Claude Desktop để Code tab đọc lại danh sách session.
+After syncing, restart Claude Desktop so the Code tab re-reads the session list.
 
 ## Menu bar
 
-Icon `⇄` trên menu bar hiển thị account hiện tại của từng app, cho phép:
-- đổi account Claude Code / Claude Desktop
-- **thêm account mới** (Claude Code mở Terminal để login; Claude Desktop tự quit/reopen và chờ bạn login)
-- lưu login hiện tại
-- clear login Claude Desktop để thêm account
-- mở Claude Desktop
+The `⇄` menu bar icon shows the current account for each app and lets you:
+- switch Claude Code / Claude Desktop accounts
+- **add a new account** (Claude Code opens Terminal to log in; Claude Desktop quits/reopens and waits for you to log in)
+- save the current login
+- clear the Claude Desktop login so you can add an account
+- open Claude Desktop
 
-Menu đọc trạng thái mỗi lần mở. Thao tác switch Claude Desktop sẽ hỏi xác nhận vì app phải quit và mở lại.
+The menu reads state each time it opens. Claude Desktop switch actions ask for confirmation because the app must quit and reopen.
 
-## Bảo mật
+## Security
 
-- Token Claude Code lưu trong **macOS Keychain** (service `claude-switch-cc`), không ghi ra file plaintext.
-- State/desktop profiles nằm ở `~/.claude-switch` với quyền `0700`; file `0600`.
-- Cookie Claude Desktop là blob mã hoá bằng keychain của máy — profile chỉ dùng được trên chính máy này.
-- Tool không in token ra output hay log.
+- Claude Code tokens are stored in the **macOS Keychain** (service `claude-switch-cc`), never written to a plaintext file.
+- State/desktop profiles live in `~/.claude-switch` with `0700` permissions; files are `0600`.
+- Claude Desktop cookies are blobs encrypted with the machine's Keychain — profiles only work on this machine.
+- The tool never prints tokens to output or logs.
 
-## Giới hạn đã biết
+## Known limitations
 
-- Lần đầu đọc Keychain, macOS có thể hỏi quyền truy cập; chọn **Always Allow**.
-- `desktop save/use` cần quit Claude Desktop; state chưa lưu trong app sẽ mất.
-- Switch Claude Code không làm session đang mở đổi account ngay — cần restart session.
-- Đây là công cụ đổi giữa các subscription bạn sở hữu trên máy của bạn; không có cơ chế bypass quota hay chia sẻ account.
+- On first Keychain access, macOS may ask for permission; choose **Always Allow**.
+- `desktop save/use` requires quitting Claude Desktop; unsaved state in the app will be lost.
+- Switching Claude Code does not change the account of an already-running session — restart the session.
+- This is a tool for switching between subscriptions you own on your own machine; it has no mechanism to bypass quotas or share accounts.
 
-## So sánh với tool open-source khác
+## Comparison with other open-source tools
 
-Đã tham khảo:
-- [claude-code-tools/claude-code-account-switcher](https://github.com/claude-code-tools/claude-code-account-switcher) — dùng `claude setup-token` + `CLAUDE_CONFIG_DIR` riêng cho từng account. Settings được symlink nhưng mỗi account có command riêng và setup token không hỗ trợ Remote Control.
-- [vyshnavsdeepak/ccswitch](https://github.com/vyshnavsdeepak/ccswitch) — snapshot credential vào Keychain rồi swap. Cùng hướng với tool này.
-- [FranCalveyra/claude-desktop-swap](https://github.com/FranCalveyra/claude-desktop-swap) — swap gần như toàn bộ app-data của Claude Desktop.
-- [NeezerGu/claude-profile-switcher](https://github.com/NeezerGu/claude-profile-switcher) — profile switcher cho Claude Desktop.
+References:
+- [claude-code-tools/claude-code-account-switcher](https://github.com/claude-code-tools/claude-code-account-switcher) — uses `claude setup-token` + a separate `CLAUDE_CONFIG_DIR` per account. Settings are symlinked, but each account has its own command and setup tokens do not support Remote Control.
+- [vyshnavsdeepak/ccswitch](https://github.com/vyshnavsdeepak/ccswitch) — snapshots credentials into the Keychain and swaps them. Same approach as this tool.
+- [FranCalveyra/claude-desktop-swap](https://github.com/FranCalveyra/claude-desktop-swap) — swaps nearly the entire Claude Desktop app-data tree.
+- [NeezerGu/claude-profile-switcher](https://github.com/NeezerGu/claude-profile-switcher) — profile switcher for Claude Desktop.
 
-Tool này khác ở chỗ: Claude Code chỉ swap Keychain + `oauthAccount` (giữ nguyên 100% `~/.claude`), còn Claude Desktop chỉ swap entry auth thay vì cả cây app-data.
+This tool differs in that Claude Code only swaps the Keychain + `oauthAccount` (leaving 100% of `~/.claude` untouched), while Claude Desktop only swaps auth entries instead of the whole app-data tree.
 
-Không liên kết với Anthropic. "Claude" là sản phẩm của Anthropic.
+Not affiliated with Anthropic. "Claude" is a product of Anthropic.
 
-## Phát triển
+## Development
 
 ```bash
 python3 -m unittest discover -s tests -v
