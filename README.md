@@ -38,6 +38,32 @@ Start automatically at macOS login (optional):
 ./scripts/autostart.sh uninstall
 ```
 
+## AI-assisted setup
+
+If you don't want to follow the manual steps, paste this prompt into Claude Code, Command Code, or any agent with terminal access. The agent does the install, account setup, and verification; you only complete browser logins and macOS permission prompts when asked.
+
+```text
+Set up claude-switch on this Mac end to end. Only pause when macOS or a browser needs me to act (login, Keychain permission). Do everything else yourself.
+
+Rules:
+- Use `claude-switch` if it is on PATH, otherwise use <repo>/bin/claude-switch.
+- Never print, copy, or commit OAuth tokens. Never hand-edit ~/.claude, ~/.claude.json, or Claude Desktop app-data; only use claude-switch.
+- Ask me before deleting any saved profile.
+
+Steps:
+1. Verify macOS, python3, and git. If the repo is missing, clone https://github.com/pdong15dth/claude-switch.git to ~/Documents/GitHub/claude-switch; if it exists, run `git pull --ff-only`.
+2. Run ./scripts/install.sh, then `claude-switch doctor`. If ~/.local/bin is not on PATH, add `export PATH="$HOME/.local/bin:$PATH"` to ~/.zshrc exactly once.
+3. Show the output of `claude-switch status`.
+4. Ask me for the account labels I want for Claude Code and Claude Desktop (e.g. work, personal).
+5. Claude Code: for the first label, if I am already signed in, run `claude-switch cc add <label>`; for each additional label run `claude-switch cc login <label>` and tell me to finish the login in the browser. Verify with `claude-switch cc list` and `claude-switch cc current`.
+6. Claude Desktop: save the currently signed-in account with `claude-switch desktop save <label>`; for each additional label run `claude-switch desktop add <label> --yes`, tell me to log in when the app reopens, and wait for the command to finish. Verify with `claude-switch desktop list` and `claude-switch desktop current`.
+7. If I have more than one account, preview session sync with `claude-switch sessions sync --dry-run`, then run `claude-switch sessions sync --yes` if the preview looks right.
+8. Ask whether I want the menu bar app to start at login; run ./scripts/autostart.sh install only if I say yes.
+9. Finish with `claude-switch status` and a short summary: saved accounts, current account per app, and how to switch.
+
+Before any `cc use`, make sure no Claude Code CLI session is running (or tell me to close it), so a live session cannot overwrite the token on refresh.
+```
+
 ## Claude Code
 
 Claude Code stores its subscription login in the **Keychain** (`Claude Code-credentials`) and account metadata in `~/.claude.json`. All settings/plugins/MCP/skills/sessions live in `~/.claude` and are never touched.

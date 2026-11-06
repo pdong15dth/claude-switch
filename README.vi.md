@@ -38,6 +38,32 @@ Tự chạy khi đăng nhập macOS (tuỳ chọn):
 ./scripts/autostart.sh uninstall
 ```
 
+## Nhờ AI cài đặt
+
+Nếu không muốn làm theo các bước thủ công, dán prompt dưới đây vào Claude Code, Command Code, hoặc bất kỳ agent nào có quyền chạy lệnh terminal. Agent sẽ cài đặt, tạo account và kiểm tra; bạn chỉ cần đăng nhập trên browser và bấm cấp quyền khi macOS hỏi.
+
+```text
+Hãy cài đặt claude-switch trên máy Mac này từ đầu đến cuối. Chỉ dừng lại khi macOS hoặc browser cần tôi thao tác (đăng nhập, cấp quyền Keychain). Mọi việc còn lại bạn tự làm.
+
+Quy tắc:
+- Dùng `claude-switch` nếu có trong PATH, ngược lại dùng <repo>/bin/claude-switch.
+- Không in, copy hay commit OAuth token. Không sửa tay ~/.claude, ~/.claude.json hay app-data của Claude Desktop; chỉ dùng claude-switch.
+- Hỏi tôi trước khi xoá bất kỳ profile đã lưu.
+
+Các bước:
+1. Kiểm tra macOS, python3, git. Nếu chưa có repo, clone https://github.com/pdong15dth/claude-switch.git vào ~/Documents/GitHub/claude-switch; nếu đã có, chạy `git pull --ff-only`.
+2. Chạy ./scripts/install.sh, sau đó `claude-switch doctor`. Nếu ~/.local/bin chưa có trong PATH, thêm `export PATH="$HOME/.local/bin:$PATH"` vào ~/.zshrc đúng một lần.
+3. Hiển thị kết quả `claude-switch status`.
+4. Hỏi tôi các label account muốn dùng cho Claude Code và Claude Desktop (ví dụ work, personal).
+5. Claude Code: với label đầu tiên, nếu tôi đang đăng nhập sẵn thì chạy `claude-switch cc add <label>`; với mỗi label tiếp theo chạy `claude-switch cc login <label>` và bảo tôi hoàn tất đăng nhập trên browser. Kiểm tra bằng `claude-switch cc list` và `claude-switch cc current`.
+6. Claude Desktop: lưu account đang đăng nhập bằng `claude-switch desktop save <label>`; với mỗi label tiếp theo chạy `claude-switch desktop add <label> --yes`, bảo tôi đăng nhập khi app mở lại, và chờ lệnh chạy xong. Kiểm tra bằng `claude-switch desktop list` và `claude-switch desktop current`.
+7. Nếu có nhiều hơn một account, xem trước sync session bằng `claude-switch sessions sync --dry-run`, rồi chạy `claude-switch sessions sync --yes` nếu kết quả xem trước ổn.
+8. Hỏi tôi có muốn menu bar app tự chạy khi đăng nhập không; chỉ chạy ./scripts/autostart.sh install nếu tôi đồng ý.
+9. Kết thúc bằng `claude-switch status` và tóm tắt ngắn: các account đã lưu, account hiện tại của từng app, và cách chuyển.
+
+Trước mọi lệnh `cc use`, đảm bảo không có session Claude Code CLI nào đang chạy (hoặc bảo tôi đóng), để session đang chạy không ghi đè token khi refresh.
+```
+
 ## Claude Code
 
 Claude Code lưu login subscription ở **Keychain** (`Claude Code-credentials`) và metadata account trong `~/.claude.json`. Mọi settings/plugin/MCP/skill/session nằm ở `~/.claude` và không bị đụng tới.
