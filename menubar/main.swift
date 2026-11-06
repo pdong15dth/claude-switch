@@ -18,6 +18,23 @@ struct StatusInfo: Codable {
     let desktop: TargetInfo
 }
 
+struct UsageWindow: Codable {
+    let key: String
+    let label: String
+    let usedPercent: Double
+    let resetsAt: Int?
+}
+
+struct UsageInfo: Codable {
+    let ok: Bool
+    let error: String?
+    let message: String?
+    let label: String?
+    let email: String?
+    let subscriptionType: String?
+    let windows: [UsageWindow]?
+}
+
 final class SwitchAction: NSObject {
     let target: String
     let label: String
@@ -29,19 +46,28 @@ final class SwitchAction: NSObject {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private var status: StatusInfo?
+    private var usageInfo: UsageInfo?
+    private var usageFetchedAt: Date?
+    private var usageLoading = false
     private var busy = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let button = statusItem.button {
-            button.image = claudeMenuIcon()
+            button.image = statusImage(percent: nil)
             button.toolTip = "Claude Switch"
         }
         menu.delegate = self
+        menu.autoenablesItems = false
         statusItem.menu = menu
         reload()
+        reloadUsage(force: true)
+        Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            self?.reload()
+            self?.reloadUsage(force: true)
+        }
     }
 
     private func claudeMenuIcon() -> NSImage {
@@ -82,9 +108,203 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return image
     }
 
+    private func statusImage(percent: Double?) -> NSImage {
+        let icon = claudeMenuIcon()
+        let barWidth: CGFloat = 26
+        let barHeight: CGFloat = 6
+        let gap: CGFloat = 5
+        let size = NSSize(width: 18 + (percent == nil ? 0 : gap + barWidth), height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            icon.draw(in: NSRect(x: 0, y: 0, width: 18, height: 18))
+            guard let percent = percent else { return true }
+            let track = NSRect(
+                x: 18 + gap,
+                y: (rect.height - barHeight) / 2,
+                width: barWidth,
+                height: barHeight
+            )
+            let background = NSBezierPath(
+                roundedRect: track,
+                xRadius: barHeight / 2,
+                yRadius: barHeight / 2
+            )
+            NSColor.black.withAlphaComponent(0.3).setFill()
+            background.fill()
+
+            let fraction = max(0, min(percent / 100, 1))
+            if fraction > 0 {
+                let fill = NSRect(
+                    x: track.minX,
+                    y: track.minY,
+                    width: max(barHeight, track.width * CGFloat(fraction)),
+                    height: barHeight
+                )
+                NSColor.black.setFill()
+                NSBezierPath(
+                    roundedRect: fill,
+                    xRadius: barHeight / 2,
+                    yRadius: barHeight / 2
+                ).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    private func updateStatusItem() {
+        guard let button = statusItem.button else { return }
+        let primary = usageInfo?.windows?.first(where: { $0.key == "five_hour" })
+            ?? usageInfo?.windows?.first
+        button.image = statusImage(percent: primary?.usedPercent)
+
+        var lines = ["Claude Switch"]
+        if let info = usageInfo, info.ok {
+            if let label = info.label {
+                lines[0] += " — \(label)"
+            }
+            for window in info.windows ?? [] {
+                var line = "\(window.label): \(formatPercent(window.usedPercent))"
+                if let reset = resetText(window.resetsAt) {
+                    line += " · \(reset)"
+                }
+                lines.append(line)
+            }
+        } else if let message = usageInfo?.message {
+            lines.append(message)
+        }
+        button.toolTip = lines.joined(separator: "\n")
+    }
+
+    private func reloadUsage(force: Bool) {
+        if usageLoading {
+            return
+        }
+        if !force, let fetched = usageFetchedAt, Date().timeIntervalSince(fetched) < 60 {
+            return
+        }
+        usageLoading = true
+        runCLI(["usage", "--json"]) { [weak self] _, out, _ in
+            guard let self = self else { return }
+            self.usageLoading = false
+            self.usageFetchedAt = Date()
+            if let data = out.data(using: .utf8) {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                if let info = try? decoder.decode(UsageInfo.self, from: data) {
+                    self.usageInfo = info
+                }
+            }
+            self.updateStatusItem()
+            self.rebuildMenu()
+        }
+    }
+
+    private func formatPercent(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.05 {
+            return String(format: "%.0f%%", value)
+        }
+        return String(format: "%.1f%%", value)
+    }
+
+    private func resetText(_ epoch: Int?) -> String? {
+        guard let epoch = epoch else { return nil }
+        let date = Date(timeIntervalSince1970: TimeInterval(epoch))
+        let remaining = date.timeIntervalSinceNow
+        if remaining <= 0 {
+            return "resetting"
+        }
+        if remaining < 48 * 3600 {
+            let totalMinutes = Int(remaining / 60)
+            let hours = totalMinutes / 60
+            let minutes = totalMinutes % 60
+            if hours > 0 {
+                return "resets in \(hours)h \(minutes)m"
+            }
+            return "resets in \(minutes)m"
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE HH:mm"
+        return "resets \(formatter.string(from: date))"
+    }
+
+    private func usageValueText(_ window: UsageWindow) -> String {
+        var parts = [formatPercent(window.usedPercent)]
+        if let reset = resetText(window.resetsAt) {
+            parts.append(reset)
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func addUsageSection() {
+        menu.addItem(.separator())
+
+        var title = "Usage"
+        if let info = usageInfo, info.ok, let label = info.label {
+            title += " — \(label)"
+            if let plan = info.subscriptionType, !plan.isEmpty {
+                title += " (\(plan))"
+            }
+        }
+        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+
+        if let info = usageInfo, info.ok, let windows = info.windows, !windows.isEmpty {
+            for window in windows {
+                addUsageRow(window)
+            }
+            return
+        }
+
+        let message: String
+        if usageInfo == nil {
+            message = "Loading…"
+        } else {
+            message = usageInfo?.message ?? "Usage unavailable"
+        }
+        let item = NSMenuItem(title: message, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        menu.addItem(item)
+    }
+
+    private func addUsageRow(_ window: UsageWindow) {
+        let width: CGFloat = 300
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 44))
+
+        let label = NSTextField(labelWithString: window.label)
+        label.font = NSFont.systemFont(ofSize: 12)
+        label.textColor = .labelColor
+        label.frame = NSRect(x: 14, y: 24, width: 140, height: 16)
+        view.addSubview(label)
+
+        let value = NSTextField(labelWithString: usageValueText(window))
+        value.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        value.textColor = .secondaryLabelColor
+        value.alignment = .right
+        value.frame = NSRect(x: width - 14 - 160, y: 24, width: 160, height: 16)
+        view.addSubview(value)
+
+        let bar = NSProgressIndicator(frame: NSRect(x: 14, y: 6, width: width - 28, height: 12))
+        bar.style = .bar
+        bar.isIndeterminate = false
+        bar.minValue = 0
+        bar.maxValue = 100
+        bar.doubleValue = min(max(window.usedPercent, 0), 100)
+        bar.controlSize = .small
+        view.addSubview(bar)
+
+        let item = NSMenuItem()
+        item.view = view
+        item.isEnabled = true
+        menu.addItem(item)
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         rebuildMenu()
         reload()
+        reloadUsage(force: false)
     }
 
     private func cliPath() -> String {
@@ -157,6 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             targetKey: "desktop",
             target: status?.desktop
         )
+        addUsageSection()
 
         menu.addItem(.separator())
 
@@ -267,6 +488,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.showError(err)
             }
             self.reload()
+            self.reloadUsage(force: true)
         }
     }
 
@@ -399,6 +621,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func refreshClicked() {
         reload()
+        reloadUsage(force: true)
     }
 
     @objc private func openClaudeClicked() {

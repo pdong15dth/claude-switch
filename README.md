@@ -165,6 +165,17 @@ The `⇄` menu bar icon shows the current account for each app and lets you:
 
 The menu reads state each time it opens. Claude Desktop switch actions ask for confirmation because the app must quit and reopen.
 
+## Usage / quota
+
+The menu bar shows the current Claude Code account's 5-hour utilization as a small bar next to the icon. Opening the menu lists every active limit window — 5-hour, weekly, and Opus/Sonnet weekly when the account reports them — with a progress bar and a reset countdown.
+
+```bash
+claude-switch usage           # human-readable
+claude-switch usage --json    # for scripts and the menu bar app
+```
+
+Usage is read from the claude.ai usage endpoint with the live Keychain token; nothing is stored or logged. If the token has expired, the bar is hidden and the menu asks you to open Claude Code once to refresh it. It refreshes every 5 minutes and is cached for 60 seconds between menu opens; use **Refresh** in the menu to force an update.
+
 ## Security
 
 - Claude Code tokens are stored in the **macOS Keychain** (service `claude-switch-cc`), never written to a plaintext file.

@@ -165,6 +165,17 @@ Icon `⇄` trên menu bar hiển thị account hiện tại của từng app, ch
 
 Menu đọc trạng thái mỗi lần mở. Thao tác switch Claude Desktop sẽ hỏi xác nhận vì app phải quit và mở lại.
 
+## Usage / quota
+
+Menu bar hiển thị mức dùng 5 giờ của account Claude Code hiện tại bằng một thanh nhỏ cạnh icon. Mở menu sẽ thấy mọi cửa sổ giới hạn đang hoạt động — 5 giờ, weekly, và Opus/Sonnet weekly nếu account có báo — kèm progress bar và đếm ngược thời gian reset.
+
+```bash
+claude-switch usage           # dạng đọc được
+claude-switch usage --json    # cho script và menu bar app
+```
+
+Dữ liệu đọc từ endpoint usage của claude.ai bằng token trong Keychain; không lưu hay ghi log. Nếu token hết hạn, thanh quota sẽ ẩn và menu nhắc mở Claude Code một lần để refresh. App tự cập nhật mỗi 5 phút, cache 60 giây giữa các lần mở menu; chọn **Refresh** trong menu để cập nhật ngay.
+
 ## Bảo mật
 
 - Token Claude Code lưu trong **macOS Keychain** (service `claude-switch-cc`), không ghi ra file plaintext.

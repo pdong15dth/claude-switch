@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from . import cc, desktop, paths, sessions, status
+from . import cc, desktop, paths, sessions, status, usage
 from .keychain import Keychain
 from .util import (
     ToolError,
@@ -526,6 +526,15 @@ def cmd_menubar(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_usage(args: argparse.Namespace) -> int:
+    data = usage.build_usage()
+    if args.json:
+        _print_json(data)
+        return 0
+    print(usage.format_usage(data))
+    return 0 if data.get("ok") else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="claude-switch",
@@ -638,6 +647,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_sessions_sync)
 
     p_sessions.set_defaults(func=cmd_sessions_status)
+
+    p_usage = sub.add_parser("usage", help="show Claude plan usage limits")
+    p_usage.add_argument("--json", action="store_true")
+    p_usage.set_defaults(func=cmd_usage)
 
     p_doctor = sub.add_parser("doctor", help="check local state")
     p_doctor.set_defaults(func=cmd_doctor)
